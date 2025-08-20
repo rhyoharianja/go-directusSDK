@@ -19,9 +19,15 @@ type ItemsRepository interface {
 	GetMany(ctx context.Context, params *models.QueryParams) ([]map[string]interface{}, error)
 	GetOne(ctx context.Context, id string, params *models.QueryParams) (map[string]interface{}, error)
 	Create(ctx context.Context, data interface{}) (map[string]interface{}, error)
+	CreateMany(ctx context.Context, data []interface{}) ([]map[string]interface{}, error)
 	Update(ctx context.Context, id string, data interface{}) (map[string]interface{}, error)
+	UpdateMany(ctx context.Context, ids []string, data interface{}) ([]map[string]interface{}, error)
 	Delete(ctx context.Context, id string) error
 	DeleteMany(ctx context.Context, ids []string) error
+	Count(ctx context.Context, filter interface{}) (int64, error)
+	Aggregate(ctx context.Context, operation string, field string, filter interface{}) (float64, error)
+	Filter(ctx context.Context, filter map[string]interface{}, params *models.QueryParams) ([]map[string]interface{}, error)
+	Relations(ctx context.Context, fields []string, params *models.QueryParams) ([]map[string]interface{}, error)
 	WithCollection(collection string) ItemsRepository
 }
 

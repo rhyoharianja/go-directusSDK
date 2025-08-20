@@ -49,7 +49,7 @@ func WithTimeout(timeout time.Duration) Option {
 // WithHTTPClient sets a custom HTTP client
 func WithHTTPClient(httpClient *http.Client) Option {
 	return func(c *HTTPClient) {
-		c.client.SetHTTPClient(httpClient)
+		c.client.SetTransport(httpClient.Transport)
 	}
 }
 

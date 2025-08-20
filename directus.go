@@ -3,8 +3,6 @@ package directus
 
 import (
 	"context"
-	"net/http"
-	"time"
 
 	"github.com/rhyoharianja/go-directusSDK/client"
 	"github.com/rhyoharianja/go-directusSDK/repositories"
@@ -13,18 +11,20 @@ import (
 // Client is the main entry point for the Directus SDK
 type Client struct {
 	httpClient *client.HTTPClient
-	auth       repositories.AuthRepository
-	items      repositories.ItemsRepository
-	files      repositories.FilesRepository
-	users      repositories.UsersRepository
-	roles      repositories.RolesRepository
+
+	// Repositories
+	auth        repositories.AuthRepository
+	items       repositories.ItemsRepository
+	files       repositories.FilesRepository
+	users       repositories.UsersRepository
+	roles       repositories.RolesRepository
 	collections repositories.CollectionsRepository
 }
 
 // NewClient creates a new Directus client
 func NewClient(baseURL string, opts ...client.Option) *Client {
 	httpClient := client.NewHTTPClient(baseURL, opts...)
-	
+
 	return &Client{
 		httpClient:  httpClient,
 		auth:        repositories.NewAuthRepository(httpClient),

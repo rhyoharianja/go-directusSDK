@@ -2,6 +2,7 @@ package errors
 
 import (
 	"fmt"
+	"time"
 )
 
 // APIError represents an error response from the Directus API

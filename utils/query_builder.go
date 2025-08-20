@@ -70,30 +70,30 @@ func (qb *QueryBuilder) Build() *models.QueryParams {
 // ToURLValues converts QueryParams to url.Values
 func ToURLValues(params *models.QueryParams) url.Values {
 	values := url.Values{}
-	
+
 	if len(params.Fields) > 0 {
 		values.Set("fields", strings.Join(params.Fields, ","))
 	}
-	
+
 	if params.Limit > 0 {
 		values.Set("limit", strconv.Itoa(params.Limit))
 	}
-	
+
 	if params.Offset > 0 {
 		values.Set("offset", strconv.Itoa(params.Offset))
 	}
-	
+
 	if params.Page > 0 {
 		values.Set("page", strconv.Itoa(params.Page))
 	}
-	
+
 	if params.Search != "" {
 		values.Set("search", params.Search)
 	}
-	
+
 	if len(params.Sort) > 0 {
 		values.Set("sort", strings.Join(params.Sort, ","))
 	}
-	
+
 	return values
 }

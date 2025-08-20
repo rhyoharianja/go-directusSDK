@@ -17,6 +17,7 @@ type QueryAlias struct {
 	deep      map[string]interface{}
 	aggregate map[string]interface{}
 	groupBy   []string
+	flow      map[string]interface{}
 }
 
 // New creates a new QueryAlias instance
@@ -28,6 +29,7 @@ func New() *QueryAlias {
 		deep:      make(map[string]interface{}),
 		aggregate: make(map[string]interface{}),
 		groupBy:   []string{},
+		flow:      make(map[string]interface{}),
 	}
 }
 
@@ -180,6 +182,15 @@ func (q *QueryAlias) Deep(relation string, query *QueryAlias) *QueryAlias {
 	return q
 }
 
+// Flow adds flow querying
+func (q *QueryAlias) Flow(flowName string, query *QueryAlias) *QueryAlias {
+	if q.flow == nil {
+		q.flow = make(map[string]interface{})
+	}
+	q.flow[flowName] = query.Build()
+	return q
+}
+
 // Aggregate adds aggregation
 func (q *QueryAlias) Aggregate(function string, field string) *QueryAlias {
 	if q.aggregate == nil {
@@ -198,47 +209,51 @@ func (q *QueryAlias) GroupBy(fields ...string) *QueryAlias {
 // Build converts the query alias to a map
 func (q *QueryAlias) Build() map[string]interface{} {
 	result := make(map[string]interface{})
-	
+
 	if len(q.fields) > 0 {
 		result["fields"] = q.fields
 	}
-	
+
 	if len(q.filter) > 0 {
 		result["filter"] = q.filter
 	}
-	
+
 	if q.search != "" {
 		result["search"] = q.search
 	}
-	
+
 	if len(q.sort) > 0 {
 		result["sort"] = q.sort
 	}
-	
+
 	if q.limit > 0 {
 		result["limit"] = q.limit
 	}
-	
+
 	if q.offset > 0 {
 		result["offset"] = q.offset
 	}
-	
+
 	if q.page > 0 {
 		result["page"] = q.page
 	}
-	
+
 	if len(q.deep) > 0 {
 		result["deep"] = q.deep
 	}
-	
+
 	if len(q.aggregate) > 0 {
 		result["aggregate"] = q.aggregate
 	}
-	
+
 	if len(q.groupBy) > 0 {
 		result["group_by"] = q.groupBy
 	}
-	
+
+	if len(q.flow) > 0 {
+		result["flow"] = q.flow
+	}
+
 	return result
 }
 
@@ -247,31 +262,31 @@ func (q *QueryAlias) And(conditions ...*QueryAlias) *QueryAlias {
 	if len(conditions) == 0 {
 		return q
 	}
-	
+
 	if q.filter == nil {
 		q.filter = make(map[string]interface{})
 	}
-	
+
 	andConditions := make([]map[string]interface{}, 0)
-	
+
 	// Add existing filter as first condition if not empty
 	if len(q.filter) > 0 {
 		andConditions = append(andConditions, q.filter)
 	}
-	
+
 	// Add new conditions
 	for _, condition := range conditions {
 		if len(condition.filter) > 0 {
 			andConditions = append(andConditions, condition.filter)
 		}
 	}
-	
+
 	if len(andConditions) > 0 {
 		q.filter = map[string]interface{}{
 			"_and": andConditions,
 		}
 	}
-	
+
 	return q
 }
 
@@ -280,27 +295,27 @@ func (q *QueryAlias) Or(conditions ...*QueryAlias) *QueryAlias {
 	if len(conditions) == 0 {
 		return q
 	}
-	
+
 	orConditions := make([]map[string]interface{}, 0)
-	
+
 	// Add existing filter as first condition if not empty
 	if len(q.filter) > 0 {
 		orConditions = append(orConditions, q.filter)
 	}
-	
+
 	// Add new conditions
 	for _, condition := range conditions {
 		if len(condition.filter) > 0 {
 			orConditions = append(orConditions, condition.filter)
 		}
 	}
-	
+
 	if len(orConditions) > 0 {
 		q.filter = map[string]interface{}{
 			"_or": orConditions,
 		}
 	}
-	
+
 	return q
 }
 
@@ -318,6 +333,11 @@ func (q *QueryAlias) Not(condition *QueryAlias) *QueryAlias {
 // With adds related data
 func (q *QueryAlias) With(relation string, query *QueryAlias) *QueryAlias {
 	return q.Deep(relation, query)
+}
+
+// WithFlow adds flow data
+func (q *QueryAlias) WithFlow(flowName string, query *QueryAlias) *QueryAlias {
+	return q.Flow(flowName, query)
 }
 
 // Count adds count aggregation
@@ -345,59 +365,66 @@ func (q *QueryAlias) Max(field string) *QueryAlias {
 	return q.Aggregate("max", field)
 }
 
-// Clone creates a copy of the query alias
+// Clone creates a copy of the query
 func (q *QueryAlias) Clone() *QueryAlias {
 	newQuery := New()
-	
+
 	if len(q.fields) > 0 {
 		newQuery.fields = append([]string{}, q.fields...)
 	}
-	
+
 	if len(q.filter) > 0 {
 		newQuery.filter = make(map[string]interface{})
 		for k, v := range q.filter {
 			newQuery.filter[k] = v
 		}
 	}
-	
+
 	if q.search != "" {
 		newQuery.search = q.search
 	}
-	
+
 	if len(q.sort) > 0 {
 		newQuery.sort = append([]string{}, q.sort...)
 	}
-	
+
 	if q.limit > 0 {
 		newQuery.limit = q.limit
 	}
-	
+
 	if q.offset > 0 {
 		newQuery.offset = q.offset
 	}
-	
+
 	if q.page > 0 {
 		newQuery.page = q.page
 	}
-	
+
 	if len(q.deep) > 0 {
 		newQuery.deep = make(map[string]interface{})
 		for k, v := range q.deep {
 			newQuery.deep[k] = v
 		}
 	}
-	
+
 	if len(q.aggregate) > 0 {
 		newQuery.aggregate = make(map[string]interface{})
 		for k, v := range q.aggregate {
 			newQuery.aggregate[k] = v
 		}
 	}
-	
+
 	if len(q.groupBy) > 0 {
 		newQuery.groupBy = append([]string{}, q.groupBy...)
 	}
-	
+
+	if len(q.flow) > 0 {
+		newQuery.flow = make(map[string]interface{})
+		for k, v := range q.flow {
+			newQuery.flow[k] = v
+		}
+	}
+
 	return newQuery
 }
 
@@ -413,11 +440,12 @@ func (q *QueryAlias) Reset() *QueryAlias {
 	q.deep = make(map[string]interface{})
 	q.aggregate = make(map[string]interface{})
 	q.groupBy = []string{}
+	q.flow = make(map[string]interface{})
 	return q
 }
 
 // String returns a string representation of the query
 func (q *QueryAlias) String() string {
-	return fmt.Sprintf("QueryAlias{fields: %v, filter: %v, search: %q, sort: %v, limit: %d, offset: %d, page: %d}",
-		q.fields, q.filter, q.search, q.sort, q.limit, q.offset, q.page)
+	return fmt.Sprintf("QueryAlias{fields: %v, filter: %v, search: %q, sort: %v, limit: %d, offset: %d, page: %d, flow: %v}",
+		q.fields, q.filter, q.search, q.sort, q.limit, q.offset, q.page, q.flow)
 }

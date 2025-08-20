@@ -42,3 +42,6 @@ logs/
 # Coverage reports
 coverage.html
 coverage.out
+
+#wiki
+wiki/

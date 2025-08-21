@@ -1,18 +1,19 @@
-# Go Directus SDK
+# Directus SDK for Go
 
-A comprehensive Go client library for interacting with the [Directus](https://directus.io/) headless CMS API.
+A comprehensive Go package for interacting with Directus CMS API, providing all features available in the Node.js SDK.
 
 ## Features
 
-- 🚀 Full CRUD operations support
-- 🔍 Advanced querying with filters, sorting, and pagination
-- 🏷️ Field aliasing and selection
-- 📊 Aggregation and grouping
-- 🔐 Authentication management
-- 📁 File upload and management
-- 👥 User and role management
-- 🎯 Type-safe operations with Go structs
-- ⚡ High performance with HTTP/2 support
+- ✅ Full authentication support (login, refresh, logout)
+- ✅ Complete CRUD operations for items
+- ✅ Collection management
+- ✅ File operations (upload, download, manage)
+- ✅ User management
+- ✅ Role and permission management
+- ✅ Query filtering, sorting, and pagination
+- ✅ Type-safe responses
+- ✅ Context support for cancellation
+- ✅ Comprehensive error handling
 
 ## Installation
 
@@ -29,502 +30,180 @@ import (
     "context"
     "fmt"
     "log"
-
+    
     "github.com/rhyoharianja/go-directusSDK"
 )
 
 func main() {
-    // Initialize client
-    client := directus.NewClient("https://your-directus-instance.com", nil)
-    
-    // Authenticate
-    auth := client.Auth()
-    _, err := auth.Login(context.Background(), "admin@example.com", "password")
+    // Create a new Directus client
+    client, err := directus.NewClient(directus.Config{
+        BaseURL: "http://localhost:8055",
+        Token:   "your-access-token",
+    })
     if err != nil {
         log.Fatal(err)
     }
+
+    // List collections
+    collections, err := client.Collections.List(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Found %d collections\n", len(collections))
 
     // Get items from a collection
-    itemsRepo := client.Items("articles")
-    articles, err := itemsRepo.GetMany(context.Background(), nil)
+    items, _, err := client.Items.List(context.Background(), "articles", &directus.QueryParams{
+        Limit: 10,
+        Sort:  []string{"-date_created"},
+    })
     if err != nil {
         log.Fatal(err)
     }
-
-    fmt.Printf("Found %d articles\n", len(articles))
+    fmt.Printf("Found %d articles\n", len(items))
 }
 ```
 
 ## Authentication
 
-### Email/Password Authentication
+### Using Access Token
 ```go
-client := directus.NewClient("https://your-instance.com", nil)
-auth := client.Auth()
-token, err := auth.Login(context.Background(), "admin@example.com", "password")
-```
-
-### Static Token Authentication
-```go
-client := directus.NewClient("https://your-instance.com", &directus.Config{
-    Token: "your-static-token",
+client, err := directus.NewClient(directus.Config{
+    BaseURL: "http://localhost:8055",
+    Token:   "your-access-token",
 })
 ```
 
-## Collections
-
-### List Collections
+### Using Email/Password
 ```go
-collections, err := client.Collections().List(context.Background())
+client, err := directus.NewClient(directus.Config{
+    BaseURL:  "http://localhost:8055",
+    Email:    "admin@example.com",
+    Password: "password",
+})
 ```
 
-### Get Collection Schema
+## Usage Examples
+
+### Items Operations
 ```go
-schema, err := client.Collections().GetSchema(context.Background(), "articles")
-```
+// Get single item
+item, err := client.Items.Get(ctx, "articles", "123")
 
-## Items Operations
+// List items with filtering
+items, meta, err := client.Items.List(ctx, "articles", &directus.QueryParams{
+    Filter: map[string]interface{}{
+        "status": "published",
+    },
+    Sort:  []string{"-date_created"},
+    Limit: 10,
+})
 
-### Basic CRUD Operations
-
-#### Create Item
-```go
-newArticle := map[string]interface{}{
-    "title":   "My New Article",
-    "content": "This is the content...",
-    "status":  "published",
+// Create new item
+newItem := directus.Item{
+    "title": "New Article",
+    "content": "Article content",
+    "status": "published",
 }
+created, err := client.Items.Create(ctx, "articles", newItem)
 
-created, err := client.Items("articles").Create(context.Background(), newArticle)
-```
-
-#### Read Items
-```go
-// Get single item by ID
-article, err := client.Items("articles").GetOne(context.Background(), 123)
-
-// Get all items
-articles, err := client.Items("articles").GetMany(context.Background(), nil)
-```
-
-#### Update Item
-```go
-update := map[string]interface{}{
+// Update item
+updated, err := client.Items.Update(ctx, "articles", "123", directus.Item{
     "title": "Updated Title",
-    "status": "draft",
-}
+})
 
-updated, err := client.Items("articles").Update(context.Background(), 123, update)
+// Delete item
+err = client.Items.Delete(ctx, "articles", "123")
 ```
 
-#### Delete Item
+### File Operations
 ```go
-err := client.Items("articles").Delete(context.Background(), 123)
-```
+// Upload file
+file, err := client.Files.Upload(ctx, "/path/to/file.jpg", map[string]interface{}{
+    "title": "My Image",
+})
 
-## Advanced Querying
+// Get file
+file, err := client.Files.Get(ctx, "file-id")
 
-### Field Selection
-```go
-query := &directus.Query{
-    Fields: []string{"id", "title", "status"},
-}
-
-items, err := client.Items("articles").GetMany(context.Background(), query)
-```
-
-### Field Aliasing
-```go
-query := &directus.Query{
-    Fields: []string{
-        "id",
-        "title:article_title",        // Rename 'title' to 'article_title'
-        "content:body",               // Rename 'content' to 'body'
-        "author.first_name:author_name",
-    },
-}
-
-items, err := client.Items("articles").GetMany(context.Background(), query)
-```
-
-### Filtering
-```go
-// Basic filters
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "status": map[string]interface{}{
-            "_eq": "published",
-        },
-        "title": map[string]interface{}{
-            "_contains": "Go",
-        },
-    },
-}
-
-// Complex filters with AND/OR
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "_and": []map[string]interface{}{
-            {
-                "status": map[string]interface{}{"_eq": "published"},
-            },
-            {
-                "_or": []map[string]interface{}{
-                    {
-                        "title": map[string]interface{}{"_contains": "Go"},
-                    },
-                    {
-                        "title": map[string]interface{}{"_contains": "Golang"},
-                    },
-                },
-            },
-        },
-    },
-}
-
-// Date filters
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "published_at": map[string]interface{}{
-            "_gte": "2024-01-01",
-            "_lt": "2024-12-31",
-        },
-    },
-}
-
-// Null checks
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "description": map[string]interface{}{
-            "_null": true,
-        },
-    },
-}
-```
-
-### Sorting
-```go
-query := &directus.Query{
-    Sort: []string{"-published_at", "title"}, // - for descending
-}
-```
-
-### Pagination
-```go
-// Limit and offset
-query := &directus.Query{
-    Limit:  10,
-    Offset: 20,
-}
-
-// Page-based pagination
-query := &directus.Query{
-    Page:  2,
-    Limit: 10,
-}
-```
-
-### Deep Filtering (Relational)
-```go
-// Filter by related collection
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "author.name": map[string]interface{}{
-            "_eq": "John Doe",
-        },
-    },
-}
-
-// Filter by many-to-many relation
-query := &directus.Query{
-    Filter: map[string]interface{}{
-        "tags.tag.name": map[string]interface{}{
-            "_in": []string{"Go", "Programming"},
-        },
-    },
-}
-```
-
-### Aggregation
-```go
-// Count items
-query := &directus.Query{
-    Aggregate: map[string]interface{}{
-        "count": "id",
-    },
-}
-
-// Sum, avg, min, max
-query := &directus.Query{
-    Aggregate: map[string]interface{}{
-        "sum":   "price",
-        "avg":   "rating",
-        "min":   "created_at",
-        "max":   "updated_at",
-    },
-}
-```
-
-## Query Builder
-
-### Using Query Builder
-```go
-import "github.com/rhyoharianja/go-directusSDK/utils"
-
-// Build complex queries
-qb := utils.NewQueryBuilder().
-    Select("id", "title", "content").
-    Where("status", "=", "published").
-    Where("created_at", ">=", "2024-01-01").
-    OrderBy("published_at", "desc").
-    Limit(10).
-    Offset(0)
-
-query := qb.Build()
-items, err := client.Items("articles").GetMany(context.Background(), query)
-```
-
-### Query Aliases
-```go
-// Using query aliases for complex queries
-query := &directus.Query{
-    Fields: []string{
-        "id",
-        "title:article_title",
-        "content:article_content",
-        "published_at",
-        "author.name:author_name",
-        "author.email:author_email",
-        "tags.tag.name:tag_names",
-    },
-    Filter: map[string]interface{}{
-        "_and": []map[string]interface{}{
-            {
-                "status": map[string]interface{}{"_eq": "published"},
-            },
-            {
-                "published_at": map[string]interface{}{
-                    "_gte": "2024-01-01",
-                    "_lt":  "2024-12-31",
-                },
-            },
-            {
-                "tags.tag.name": map[string]interface{}{
-                    "_in": []string{"Go", "Programming", "Tutorial"},
-                },
-            },
-        },
-    },
-    Sort:  []string{"-published_at", "title"},
-    Limit: 10,
-    Page:  1,
-}
-```
-
-## File Operations
-
-### Upload File
-```go
-file, err := client.Files().Upload(context.Background(), "/path/to/file.jpg", &directus.FileUploadOptions{
-    Title:       "My Image",
-    Description: "A beautiful image",
-    Folder:      "images",
+// List files
+files, err := client.Files.List(ctx, &directus.QueryParams{
+    Limit: 20,
 })
 ```
 
-### Download File
+### User Management
 ```go
-fileData, err := client.Files().Download(context.Background(), fileID)
-```
-
-### List Files
-```go
-files, err := client.Files().List(context.Background(), &directus.Query{
-    Filter: map[string]interface{}{
-        "type": map[string]interface{}{
-            "_eq": "image/jpeg",
-        },
-    },
-})
-```
-
-## User Management
-
-### Create User
-```go
-newUser := &directus.User{
-    Email:    "newuser@example.com",
-    Password: "securepassword",
-    Role:     2, // Role ID
+// Create user
+user := &directus.User{
+    Email: "user@example.com",
+    FirstName: "John",
+    LastName: "Doe",
+    Role: "editor",
 }
+createdUser, err := client.Users.Create(ctx, user)
 
-user, err := client.Users().Create(context.Background(), newUser)
-```
-
-### Update User
-```go
-update := map[string]interface{}{
-    "first_name": "John",
-    "last_name":  "Doe",
-}
-
-user, err := client.Users().Update(context.Background(), userID, update)
-```
-
-### List Users
-```go
-users, err := client.Users().List(context.Background(), &directus.Query{
-    Fields: []string{"id", "email", "first_name", "last_name"},
-    Filter: map[string]interface{}{
-        "status": map[string]interface{}{
-            "_eq": "active",
-        },
-    },
-})
-```
-
-## Error Handling
-
-```go
-items, err := client.Items("articles").GetMany(context.Background(), query)
-if err != nil {
-    var apiErr *directus.APIError
-    if errors.As(err, &apiErr) {
-        fmt.Printf("API Error: %s (Code: %d)\n", apiErr.Message, apiErr.StatusCode)
-        // Handle specific error cases
-    } else {
-        fmt.Printf("Unexpected error: %v\n", err)
-    }
-}
-```
-
-## Context Support
-
-```go
-// With timeout
-ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-defer cancel()
-
-items, err := client.Items("articles").GetMany(ctx, query)
-
-// With cancellation
-ctx, cancel := context.WithCancel(context.Background())
-go func() {
-    time.Sleep(2 * time.Second)
-    cancel()
-}()
-
-items, err := client.Items("articles").GetMany(ctx, query)
-```
-
-## Examples
-
-### Complete Example with All Features
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-    "time"
-
-    "github.com/rhyoharianja/go-directusSDK"
-)
-
-func main() {
-    // Initialize client
-    client := directus.NewClient("https://your-instance.com", nil)
-    
-    // Authenticate
-    auth := client.Auth()
-    _, err := auth.Login(context.Background(), "admin@example.com", "password")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Complex query example
-    query := &directus.Query{
-        Fields: []string{
-            "id",
-            "title",
-            "content:body",
-            "published_at",
-            "author.name:author_name",
-            "author.email:author_email",
-            "tags.tag.name:tag_names",
-        },
-        Filter: map[string]interface{}{
-            "_and": []map[string]interface{}{
-                {
-                    "status": map[string]interface{}{"_eq": "published"},
-                },
-                {
-                    "published_at": map[string]interface{}{
-                        "_gte": "2024-01-01",
-                        "_lt":  "2024-12-31",
-                    },
-                },
-                {
-                    "tags.tag.name": map[string]interface{}{
-                        "_in": []string{"Go", "Programming", "Tutorial"},
-                    },
-                },
-            },
-        },
-        Sort:  []string{"-published_at", "title"},
-        Limit: 10,
-        Page:  1,
-    }
-
-    // Execute query
-    articles, err := client.Items("articles").GetMany(context.Background(), query)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("Found %d articles matching criteria\n", len(articles.Data))
-    
-    // Process results
-    for _, article := range articles.Data {
-        fmt.Printf("Title: %s, Author: %s, Tags: %v\n", 
-            article["title"], 
-            article["author_name"], 
-            article["tag_names"])
-    }
-}
+// Invite user
+err = client.Users.Invite(ctx, "newuser@example.com", "editor")
 ```
 
 ## API Reference
 
-### Client Methods
+### Client
+- `NewClient(config Config) (*Client, error)` - Create new client
+- `GetBaseURL() string` - Get base URL
+- `GetToken() string` - Get current token
 
-- `NewClient(baseURL string, config *Config) *Client` - Create new client
-- `Auth() *AuthService` - Authentication service
-- `Items(collection string) *ItemsRepository` - Items operations
-- `Collections() *CollectionsService` - Collections management
-- `Files() *FilesService` - File operations
-- `Users() *UsersService` - User management
-- `Roles() *RolesService` - Role management
+### ItemsService
+- `Get(ctx, collection, id string, params *QueryParams) (Item, error)`
+- `List(ctx, collection string, params *QueryParams) ([]Item, *Meta, error)`
+- `Create(ctx, collection string, item Item) (Item, error)`
+- `Update(ctx, collection, id string, item Item) (Item, error)`
+- `Delete(ctx, collection, id string) error`
 
-### Query Methods
+### CollectionsService
+- `Get(ctx, name string) (*Collection, error)`
+- `List(ctx) ([]Collection, error)`
+- `Create(ctx, collection *Collection) (*Collection, error)`
+- `Update(ctx, name string, collection *Collection) (*Collection, error)`
+- `Delete(ctx, name string) error`
 
-- `GetOne(ctx context.Context, id interface{}) (*Item, error)`
-- `GetMany(ctx context.Context, query *Query) (*ItemsResponse, error)`
-- `Create(ctx context.Context, data interface{}) (*Item, error)`
-- `Update(ctx context.Context, id interface{}, data interface{}) (*Item, error)`
-- `Delete(ctx context.Context, id interface{}) error`
+### FilesService
+- `Get(ctx, id string) (*File, error)`
+- `List(ctx, params *QueryParams) ([]File, error)`
+- `Upload(ctx, filePath string, metadata map[string]interface{}) (*File, error)`
+- `Update(ctx, id string, metadata map[string]interface{}) (*File, error)`
+- `Delete(ctx, id string) error`
+
+### UsersService
+- `Get(ctx, id string) (*User, error)`
+- `List(ctx, params *QueryParams) ([]User, error)`
+- `Create(ctx, user *User) (*User, error)`
+- `Update(ctx, id string, user *User) (*User, error)`
+- `Delete(ctx, id string) error`
+- `Invite(ctx, email, role string) error`
+
+### AuthService
+- `Login(ctx, email, password string) (string, error)`
+- `Refresh(ctx, refreshToken string) (string, error)`
+- `Logout(ctx, refreshToken string) error`
+- `Me(ctx) (*User, error)`
+
+## Error Handling
+
+All functions return errors that can be checked:
+
+```go
+item, err := client.Items.Get(ctx, "articles", "123")
+if err != nil {
+    // Handle error
+    fmt.Printf("Error: %v\n", err)
+}
+```
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-- 📖 [Documentation](https://github.com/rhyoharianja/go-directusSDK/wiki)
-- 🐛 [Issue Tracker](https://github.com/rhyoharianja/go-directusSDK/issues)
-- 💬 [Discussions](https://github.com/rhyoharianja/go-directusSDK/discussions)
+MIT License - see LICENSE file for details

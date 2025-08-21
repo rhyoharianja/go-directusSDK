@@ -12,14 +12,14 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-vendor/
+# vendor/
 
 # Go workspace file
 go.work
 
 # IDE files
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
 
@@ -34,14 +34,4 @@ Thumbs.db
 # Build artifacts
 dist/
 build/
-
-# Logs
-*.log
-logs/
-
-# Coverage reports
-coverage.html
-coverage.out
-
-#wiki
 wiki/

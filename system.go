@@ -3,41 +3,108 @@ package directus
 import (
 	"context"
 	"fmt"
-
-	"github.com/rhyoharianja/go-directusSDK/client"
 )
 
-// SystemInfo represents system information
-type SystemInfo struct {
-	Version    string   `json:"version"`
-	Extensions []string `json:"extensions"`
-}
-
-// SystemService provides methods for system operations
+// SystemService handles system configuration and info operations
 type SystemService struct {
-	client *client.HTTPClient
+	client *Client
 }
 
-// newSystemService creates a new system service
-func newSystemService(client *client.HTTPClient) *SystemService {
+// NewSystemService creates a new system service
+func NewSystemService(client *Client) *SystemService {
 	return &SystemService{client: client}
 }
 
 // GetInfo retrieves system information
 func (s *SystemService) GetInfo(ctx context.Context) (*SystemInfo, error) {
-	var info SystemInfo
-	if err := s.client.Get(ctx, "/system/info", nil, &info); err != nil {
-		return nil, fmt.Errorf("get system info failed: %w", err)
+	var resp struct {
+		Data SystemInfo `json:"data"`
 	}
-	return &info, nil
+	path := "/system/info"
+
+	response, err := s.client.httpClient.R().
+		SetContext(ctx).
+		SetResult(&resp).
+		Get(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode() != 200 {
+		return nil, fmt.Errorf("failed to get system info: %s", response.Status())
+	}
+
+	return &resp.Data, nil
 }
 
-// Reboot reboots the system
-func (s *SystemService) Reboot(ctx context.Context) error {
-	return s.client.Post(ctx, "/system/reboot", nil, nil)
+// GetSettings retrieves system settings
+func (s *SystemService) GetSettings(ctx context.Context) (*SystemSettings, error) {
+	var resp struct {
+		Data SystemSettings `json:"data"`
+	}
+	path := "/system/settings"
+
+	response, err := s.client.httpClient.R().
+		SetContext(ctx).
+		SetResult(&resp).
+		Get(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode() != 200 {
+		return nil, fmt.Errorf("failed to get system settings: %s", response.Status())
+	}
+
+	return &resp.Data, nil
 }
 
-// Shutdown shuts down the system
-func (s *SystemService) Shutdown(ctx context.Context) error {
-	return s.client.Post(ctx, "/system/shutdown", nil, nil)
+// UpdateSettings updates system settings
+func (s *SystemService) UpdateSettings(ctx context.Context, settings *SystemSettings) (*SystemSettings, error) {
+	var resp struct {
+		Data SystemSettings `json:"data"`
+	}
+	path := "/system/settings"
+
+	response, err := s.client.httpClient.R().
+		SetContext(ctx).
+		SetBody(settings).
+		SetResult(&resp).
+		Patch(path)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode() != 200 {
+		return nil, fmt.Errorf("failed to update system settings: %s", response.Status())
+	}
+
+	return &resp.Data, nil
+}
+
+// SystemInfo represents system information
+type SystemInfo struct {
+	ID          string   `json:"id,omitempty"`
+	ProjectName string   `json:"project_name"`
+	ProjectURL  string   `json:"project_url"`
+	Version     string   `json:"version"`
+	Extensions  []string `json:"extensions,omitempty"`
+}
+
+// SystemSettings represents system settings
+type SystemSettings struct {
+	ID                    string                   `json:"id,omitempty"`
+	ProjectName           string                   `json:"project_name"`
+	ProjectURL            string                   `json:"project_url"`
+	DefaultLanguage       string                   `json:"default_language"`
+	DefaultTimezone       string                   `json:"default_timezone"`
+	AuthLoginAttempts     int                      `json:"auth_login_attempts"`
+	AuthPasswordPolicy    string                   `json:"auth_password_policy"`
+	StorageAssetTransform string                   `json:"storage_asset_transform"`
+	StorageAssetPresets   []map[string]interface{} `json:"storage_asset_presets,omitempty"`
+	CustomCSS             string                   `json:"custom_css,omitempty"`
+	ModuleBar             []map[string]interface{} `json:"module_bar,omitempty"`
 }

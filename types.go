@@ -165,17 +165,63 @@ type Permission struct {
 	Fields      []string               `json:"fields,omitempty"`
 }
 
-// QueryParams represents query parameters for filtering and pagination
+// QueryParams represents query parameters for filtering, pagination, and field manipulation
 type QueryParams struct {
-	Fields []string               `json:"fields,omitempty"`
-	Filter map[string]interface{} `json:"filter,omitempty"`
-	Search string                 `json:"search,omitempty"`
-	Sort   []string               `json:"sort,omitempty"`
-	Limit  int                    `json:"limit,omitempty"`
-	Offset int                    `json:"offset,omitempty"`
-	Page   int                    `json:"page,omitempty"`
-	Deep   map[string]interface{} `json:"deep,omitempty"`
-	Export string                 `json:"export,omitempty"`
+	Fields  []string               `json:"fields,omitempty"`
+	Aliases map[string]string      `json:"aliases,omitempty"` // Field aliases: {"original_field": "alias_name"}
+	Filter  map[string]interface{} `json:"filter,omitempty"`
+	Search  string                 `json:"search,omitempty"`
+	Sort    []string               `json:"sort,omitempty"`
+	Limit   int                    `json:"limit,omitempty"`
+	Offset  int                    `json:"offset,omitempty"`
+	Page    int                    `json:"page,omitempty"`
+	Deep    map[string]interface{} `json:"deep,omitempty"`
+	Export  string                 `json:"export,omitempty"`
+	Lang    string                 `json:"lang,omitempty"` // Language code for translations
+}
+
+// FilterOperator represents Directus filter operators
+type FilterOperator string
+
+const (
+	FilterEqual         FilterOperator = "_eq"
+	FilterNotEqual      FilterOperator = "_neq"
+	FilterLessThan      FilterOperator = "_lt"
+	FilterLessThanEqual FilterOperator = "_lte"
+	FilterGreaterThan   FilterOperator = "_gt"
+	FilterGreaterThanEq FilterOperator = "_gte"
+	FilterIn            FilterOperator = "_in"
+	FilterNotIn         FilterOperator = "_nin"
+	FilterContains      FilterOperator = "_contains"
+	FilterNotContains   FilterOperator = "_ncontains"
+	FilterStartsWith    FilterOperator = "_starts_with"
+	FilterEndsWith      FilterOperator = "_ends_with"
+	FilterBetween       FilterOperator = "_between"
+	FilterEmpty         FilterOperator = "_empty"
+	FilterNotEmpty      FilterOperator = "_nempty"
+	FilterNull          FilterOperator = "_null"
+	FilterNotNull       FilterOperator = "_nnull"
+)
+
+// FilterCondition represents a single filter condition
+type FilterCondition struct {
+	Field    string         `json:"field"`
+	Operator FilterOperator `json:"operator"`
+	Value    interface{}    `json:"value"`
+}
+
+// LogicalOperator represents logical operators for combining filters
+type LogicalOperator string
+
+const (
+	LogicalAnd LogicalOperator = "_and"
+	LogicalOr  LogicalOperator = "_or"
+)
+
+// LogicalFilter represents a logical combination of filters
+type LogicalFilter struct {
+	Operator LogicalOperator `json:"operator"`
+	Filters  []interface{}   `json:"filters"` // Can be FilterCondition or LogicalFilter
 }
 
 // Response represents a generic API response

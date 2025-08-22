@@ -29,8 +29,14 @@ func (s *ItemsService) Get(ctx context.Context, collection string, id string, pa
 		if len(params.Fields) > 0 {
 			req.SetQueryParam("fields", joinFields(params.Fields))
 		}
+		if len(params.Aliases) > 0 {
+			req.SetQueryParam("alias", toJSONString(params.Aliases))
+		}
 		if params.Deep != nil {
 			req.SetQueryParam("deep", toJSONString(params.Deep))
+		}
+		if params.Lang != "" {
+			req.SetQueryParam("lang", params.Lang)
 		}
 	}
 
@@ -39,8 +45,8 @@ func (s *ItemsService) Get(ctx context.Context, collection string, id string, pa
 		return nil, err
 	}
 
-	if response.StatusCode() != http.StatusOK {
-		return nil, parseError(response)
+	if err := parseResponse(response, &resp); err != nil {
+		return nil, err
 	}
 
 	if resp.Data == nil {
@@ -49,7 +55,7 @@ func (s *ItemsService) Get(ctx context.Context, collection string, id string, pa
 
 	item, ok := resp.Data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid response format")
+		return nil, fmt.Errorf("invalid response format: expected object, got %T", resp.Data)
 	}
 
 	return Item(item), nil
@@ -67,6 +73,9 @@ func (s *ItemsService) List(ctx context.Context, collection string, params *Quer
 	if params != nil {
 		if len(params.Fields) > 0 {
 			req.SetQueryParam("fields", joinFields(params.Fields))
+		}
+		if len(params.Aliases) > 0 {
+			req.SetQueryParam("alias", toJSONString(params.Aliases))
 		}
 		if params.Filter != nil {
 			req.SetQueryParam("filter", toJSONString(params.Filter))
@@ -89,6 +98,9 @@ func (s *ItemsService) List(ctx context.Context, collection string, params *Quer
 		if params.Deep != nil {
 			req.SetQueryParam("deep", toJSONString(params.Deep))
 		}
+		if params.Lang != "" {
+			req.SetQueryParam("lang", params.Lang)
+		}
 	}
 
 	response, err := req.Get(path)
@@ -96,19 +108,21 @@ func (s *ItemsService) List(ctx context.Context, collection string, params *Quer
 		return nil, nil, err
 	}
 
-	if response.StatusCode() != http.StatusOK {
-		return nil, nil, parseError(response)
+	if err := parseResponse(response, &resp); err != nil {
+		return nil, nil, err
 	}
 
 	data, ok := resp.Data.([]interface{})
 	if !ok {
-		return nil, nil, fmt.Errorf("invalid response format")
+		return nil, nil, fmt.Errorf("invalid response format: expected array, got %T", resp.Data)
 	}
 
 	items := make([]Item, len(data))
 	for i, v := range data {
 		if item, ok := v.(map[string]interface{}); ok {
 			items[i] = Item(item)
+		} else {
+			return nil, nil, fmt.Errorf("invalid item format at index %d: expected object, got %T", i, v)
 		}
 	}
 
@@ -130,13 +144,13 @@ func (s *ItemsService) Create(ctx context.Context, collection string, item Item)
 		return nil, err
 	}
 
-	if response.StatusCode() != http.StatusCreated {
-		return nil, parseError(response)
+	if err := parseResponse(response, &resp); err != nil {
+		return nil, err
 	}
 
 	createdItem, ok := resp.Data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid response format")
+		return nil, fmt.Errorf("invalid response format: expected object, got %T", resp.Data)
 	}
 
 	return Item(createdItem), nil
@@ -157,13 +171,13 @@ func (s *ItemsService) Update(ctx context.Context, collection string, id string,
 		return nil, err
 	}
 
-	if response.StatusCode() != http.StatusOK {
-		return nil, parseError(response)
+	if err := parseResponse(response, &resp); err != nil {
+		return nil, err
 	}
 
 	updatedItem, ok := resp.Data.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid response format")
+		return nil, fmt.Errorf("invalid response format: expected object, got %T", resp.Data)
 	}
 
 	return Item(updatedItem), nil
